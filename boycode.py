@@ -24,17 +24,19 @@ def lookup_brand(barcode):
             return resp_json['brand']
         elif resp_json['manufacturer']:
             return resp_json['manufacturer']
+        elif resp_json['description']:
+            return resp_json['description']
         else:
-            return 'The product\'s brand couldn\'t be identified'
+            return 'unidentifiable'
     else:
-        return 'Make sure you\'ve entered the barcode correctly'
+        return 'error'
 
 import re
 def investigate(brand):
     for key, val in boycotts.items():
         if re.search(key, brand):
-            return (True, val)
-    return (False, val)
+            return (True, key, val)
+    return (False, brand , False)
             
 
 from flask import Flask
@@ -50,17 +52,17 @@ def index():
 def boycott():
     if request.method == 'POST':
         brand = lookup_brand(request.form['barcode'])
-        if brand == 'Make sure you\'ve entered the barcode correctly':
-           return render_template('index.html', verdict='red', message=brand)
-        elif brand == 'The product\'s brand couldn\'t be identified':
-            return render_template('index.html', verdict='red', message=brand)
-        
         investigation =  investigate(brand.casefold())
-        if investigation[0]:
-            message = 'This product is associated with the company ' + brand + ' which has had a boycott called on it by ' + investigation[1]['Called By'] + ' since ' + investigation[1]['Boycott Started'] + ' due to ' + investigation[1]['Category'] + ' violations.'
+        
+        if brand == 'error':
+           return render_template('index.html', verdict='red', message='Make sure you\'ve entered the barcode correctly')
+        elif brand == 'unidentifiable':
+            return render_template('index.html', verdict='red', message='The product\'s brand couldn\'t be identified')
+        elif investigation[0]:
+            message = 'This product is associated with the company ' + investigation[1] + ' which has had a boycott called on it by ' + investigation[2]['Called By'] + ' since ' + investigation[2]['Boycott Started'] + ' due to ' + investigation[2]['Category'] + ' violations.'
             return render_template('index.html', verdict='red', message=message)
         else:
-            message = 'This product is associated with the company ' + brand + ' which currently has no boycott called on it.'
+            message = 'This product, \'' + investigation[1] + '\'s\' company does not seem to have any boycott associated with it'
             return render_template('index.html', verdict='green', message=message)
  
 if __name__ == "__main__":
